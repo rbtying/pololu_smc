@@ -1,7 +1,0 @@
-Header header
-int32 left_enc_pos
-int32 right_enc_pos
-float32 left_enc_spd
-float32 right_enc_spd
-float32 left_req_speed
-float32 right_req_speed

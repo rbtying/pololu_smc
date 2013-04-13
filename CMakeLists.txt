@@ -21,7 +21,6 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation
 ## Generate messages in the 'msg' folder
 add_message_files(
     FILES
-    RawData.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -68,7 +67,7 @@ target_link_libraries(pololu_smc_driver ${catkin_LIBRARIES})
 
 ## Declare a cpp executable
 # add_executable(parallax_base_node src/parallax_base_node.cpp)
-add_executable(pololu_smc_node src/main.cc src/ParallaxBase.cc)
+add_executable(pololu_smc_node src/main.cc src/SMCNode.cc)
 target_link_libraries(pololu_smc_node ${catkin_LIBRARIES} pololu_smc_driver)
 
 ## Add dependencies to the executable
