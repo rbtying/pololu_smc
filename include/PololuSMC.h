@@ -9,10 +9,9 @@ class PololuSMC{
         /*!
          * Constructs a PololuSMC driver
          * @param ser the port to use
-         * @param id a list of motor IDs
-         * @param num the number of IDs in the list
+         * @param id the motor id
          */
-        PololuSMC(std::string ser, uint8_t id);
+        PololuSMC(serial::Serial *serialport, uint8_t id);
 
         /*!
          * Destructs the controller. 

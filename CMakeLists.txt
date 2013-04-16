@@ -66,8 +66,7 @@ add_library(pololu_smc_driver src/PololuSMC.cc)
 target_link_libraries(pololu_smc_driver ${catkin_LIBRARIES})
 
 ## Declare a cpp executable
-# add_executable(parallax_base_node src/parallax_base_node.cpp)
-add_executable(pololu_smc_node src/main.cc src/SMCNode.cc)
+add_executable(pololu_smc_node src/main.cc src/SMCNode.cc src/PID.cc)
 target_link_libraries(pololu_smc_node ${catkin_LIBRARIES} pololu_smc_driver)
 
 ## Add dependencies to the executable

@@ -109,19 +109,18 @@ namespace SMCMD {
     static const uint8_t START_BYTE = 0xAA;
 };
 
-PololuSMC::PololuSMC(std::string ser, uint8_t id) { 
-    m_serial = new serial::Serial(ser, BAUDRATE);
+PololuSMC::PololuSMC(serial::Serial *serialport, uint8_t id) { 
+    m_serial = serialport;
     m_id = id;
 }
 
 PololuSMC::~PololuSMC() {
     // stop all of the controllers
-    close();
-    delete m_serial;
+    setMotorSpeed(0);
 }
 
 void PololuSMC::open() {
-    // configure serial for 19200 8-N-1
+    // configure serial for 1000000 8-N-1
     m_serial->setBaudrate(BAUDRATE);
     m_serial->setStopbits(serial::stopbits_one);
     m_serial->setParity(serial::parity_none);
