@@ -1,25 +1,25 @@
 #include "SMCNode.h"
 
-#include <XmlRpcValue.h>
 #include <serial/serial.h>
 #include <string>
+#include <iostream>
+#include <sstream>
+#include <vector>
 #include "PololuSMC.h"
 
 #include <ros/ros.h>
 
 #include <std_msgs/Float64.h>
 
-const double DEFAULT_RATE = 50.0;
+const double DEFAULT_RATE = 25.0;
 const double PI = 3.1415926535;
 
 SMCNode::SMCNode() : m_n("~") {
-    XmlRpc::XmlRpcValue id_list;    
+    std::string id_list;    
     m_n.getParam("id_list", id_list);
-    ROS_ASSERT(id_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
-
-    for (int i = 0; i < id_list.size(); i++) {
-        ROS_ASSERT(id_list[i].getType() == XmlRpc::XmlRpcValue::TypeInt);
-        int val = id_list[i];
+    std::istringstream iss(id_list);
+    int val;
+    while (iss >> val) {
         m_ids.push_back(static_cast<uint8_t>(val));
     }
 
@@ -31,7 +31,7 @@ SMCNode::SMCNode() : m_n("~") {
     m_n.param<double>("default_i", defaulti, 0);
     m_n.param<double>("default_d", defaultd, 0);
 
-    m_serial = new serial::Serial(portname, 1000000);
+    m_serial = new serial::Serial(portname, 115200);
 
     m_controllers.resize(m_ids.size(), NULL);
     m_pubs.resize(m_ids.size());
@@ -42,7 +42,10 @@ SMCNode::SMCNode() : m_n("~") {
         m_controllers[i] = controller;
         m_controllers[i]->open();
 
-        std::string base = "smc_" + boost::lexical_cast<std::string>(m_ids[i]);
+        int id = m_ids[i];
+
+        std::string base = "smc_" + boost::lexical_cast<std::string>(id);
+        ROS_WARN("%s, %d", base.c_str(), m_ids[i]);
         double kp, ki, kd;
         m_n.param<double>(base + "_p", kp, defaultp);
         m_n.param<double>(base + "_i", ki, defaulti);
@@ -88,10 +91,12 @@ void SMCNode::backgroundTask(const ros::TimerEvent& e) {
 
     for (int i = 0; i < m_ids.size(); i++) {
         double input = (m_controllers[i]->getAN1() - 1.65) / 3.3 * 5 * 2 * PI;
-        m_pids[i].update(input, dt);
-        m_controllers[i]->setMotorSpeed(m_pids[i].getOutput());
         std_msgs::Float64 ang;
         ang.data = input;
         m_pubs[i].publish(ang);
+
+        m_pids[i].update(input, dt);
+        /* m_controllers[i]->setMotorSpeed(m_pids[i].getOutput()); */
+        m_controllers[i]->setMotorSpeed(0.0);
     }
 }

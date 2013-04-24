@@ -3,6 +3,7 @@
 #include <string>
 #include <ros/ros.h>
 #include <serial/serial.h>
+#include <cmath>
 
 namespace SMCMD {
     enum command_t {
@@ -156,8 +157,8 @@ std::string PololuSMC::getPortName() {
 }
 
 int16_t PololuSMC::construct_int16(uint8_t * buf) {
-    // assume high byte first
-    return (buf[0] << 8u) | buf[1];
+    // assume little endian
+    return (buf[1] << 8u) | buf[0];
 }
 
 char* PololuSMC::byteArrayToString(uint8_t * buf, uint8_t buflen) {
@@ -176,20 +177,39 @@ char* PololuSMC::byteArrayToString(uint8_t * buf, uint8_t buflen) {
 
 uint16_t PololuSMC::format_uint16_3600(uint16_t std) {
     uint8_t byte1 = std & 0x1f;
-    uint8_t byte2 = std >> 5;
+    uint8_t byte2 = (std >> 5) & 0x7f;
     return byte2 << 8u | byte1;
 }
 
 uint16_t PololuSMC::format_uint16_16384(uint16_t std) {
     uint8_t byte1 = std & 0x7f;
-    uint8_t byte2 = std >> 7;
+    uint8_t byte2 = (std >> 7) & 0x7f;
     return byte2 << 8u | byte1;
 }
 
 void PololuSMC::send_command(uint8_t cmd, uint8_t *data, uint8_t datalen) {
-    uint8_t header[] = { SMCMD::START_BYTE, m_id };
-    m_serial->write(header, 2);
-    m_serial->write(data, datalen);
+    uint8_t header[3] = { SMCMD::START_BYTE, m_id, cmd };
+    /* m_serial->write(header, 5); */
+
+    uint8_t buf[sizeof(header) + datalen];
+    memset(buf, 0, sizeof(header) + datalen);
+
+    for (int i = 0; i < sizeof(header); i++) {
+        buf[i] = header[i];
+    }
+
+    for (int i = 0; i < datalen; i++) {
+        buf[i + sizeof(header)] = data[i];
+    }
+
+    m_serial->write(buf, sizeof(header) + datalen);
+    m_serial->flush();
+    
+    char *header_hex = byteArrayToString(buf, sizeof(header) + datalen);
+    char *data_hex = byteArrayToString(data, datalen);
+    ROS_INFO("sending message: %s %s", header_hex, data_hex);
+    free(header_hex);
+    free(data_hex);
 }
 
 /* API COMMANDS */
@@ -198,7 +218,8 @@ void PololuSMC::exitSafeStart() {
 }
 
 void PololuSMC::setMotorSpeed(double amt) {
-    uint16_t desired_speed = std::min<double>(abs(amt), 1.0) * 3600; 
+    double absamt = (amt >= 0) ? amt : -amt;
+    uint16_t desired_speed = absamt * 3200;
     desired_speed = format_uint16_3600(desired_speed);
 
     exitSafeStart();

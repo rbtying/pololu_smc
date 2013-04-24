@@ -175,7 +175,7 @@ class PololuSMC{
          * byte.
          * @param buf the byte array to print
          * @param buflen the length of the byte array
-         * @return pointer to string (needs to be freed
+         * @return pointer to string (needs to be freed)
          */
         char* byteArrayToString(uint8_t * buf, uint8_t buflen);
 
