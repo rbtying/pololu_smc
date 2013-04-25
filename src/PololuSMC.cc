@@ -140,7 +140,7 @@ void PololuSMC::open() {
 }
 
 void PololuSMC::initialize() {
-    ROS_INFO("Initializing Parallax Position Controller with id 0x%x", m_id);
+    ROS_INFO("Initializing Pololu SMC with id 0x%x", m_id);
 }
 
 void PololuSMC::close() {
@@ -205,11 +205,11 @@ void PololuSMC::send_command(uint8_t cmd, uint8_t *data, uint8_t datalen) {
     m_serial->write(buf, sizeof(header) + datalen);
     m_serial->flush();
     
-    char *header_hex = byteArrayToString(buf, sizeof(header) + datalen);
-    char *data_hex = byteArrayToString(data, datalen);
-    ROS_INFO("sending message: %s %s", header_hex, data_hex);
-    free(header_hex);
-    free(data_hex);
+    /* char *header_hex = byteArrayToString(buf, sizeof(header) + datalen); */
+    /* char *data_hex = byteArrayToString(data, datalen); */
+    /* ROS_INFO("sending message: %s %s", header_hex, data_hex); */
+    /* free(header_hex); */
+    /* free(data_hex); */
 }
 
 /* API COMMANDS */
@@ -218,8 +218,15 @@ void PololuSMC::exitSafeStart() {
 }
 
 void PololuSMC::setMotorSpeed(double amt) {
+    if (amt > 1.0) {
+        amt = 1.0;
+    } else if (amt < -1.0) {
+        amt = -1.0;
+    }
+
     double absamt = (amt >= 0) ? amt : -amt;
-    uint16_t desired_speed = absamt * 3200;
+    uint16_t desired_speed = absamt * 3100;
+    ROS_INFO("Setting motor speed to %.02f: %d", amt, desired_speed);
     desired_speed = format_uint16_3600(desired_speed);
 
     exitSafeStart();

@@ -53,8 +53,12 @@ class SMCNode {
 
         std::vector<uint8_t> m_ids;
         std::vector<PololuSMC*> m_controllers;
+        std::vector<double> m_min_val;
+        std::vector<double> m_max_val;
+        std::vector<double> m_vcenter_val;
         std::vector<PID> m_pids;
         std::vector<ros::Publisher> m_pubs;
+        std::vector<ros::Publisher> m_vpubs;
         std::vector<ros::Subscriber> m_subs;
 };
 

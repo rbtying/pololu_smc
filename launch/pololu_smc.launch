@@ -1,10 +1,13 @@
 <launch>
     <node name="pololu_smc_node" pkg="pololu_smc" type="pololu_smc_node">
-        <param name="id_list" value="8 9" type="string" />
+        <param name="id_list" value="9" type="string" />
         <param name="portname" value="/dev/ttyACM0" type="string" />
+
+        <param name="smc_9_vcenter" value="2.8" type="double" />
+        <param name="smc_9_min" value="-0.7" type="double" />
+        <param name="smc_9_max" value="0.7" type="double" />
 
         <param name="default_p" value="2" type="double" />
         <param name="default_i" value="0" type="double" />
         <param name="default_d" value="0.25" type="double" />
-    </node>
-</launch>
+    </node> </launch>

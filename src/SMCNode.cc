@@ -35,8 +35,13 @@ SMCNode::SMCNode() : m_n("~") {
 
     m_controllers.resize(m_ids.size(), NULL);
     m_pubs.resize(m_ids.size());
+    m_vpubs.resize(m_ids.size());
     m_subs.resize(m_ids.size());
     m_pids.resize(m_ids.size());
+    m_min_val.resize(m_ids.size());
+    m_max_val.resize(m_ids.size());
+    m_vcenter_val.resize(m_ids.size());
+
     for (int i = 0; i < m_ids.size(); i++) {
         PololuSMC *controller = new PololuSMC(m_serial, m_ids[i]);
         m_controllers[i] = controller;
@@ -52,7 +57,18 @@ SMCNode::SMCNode() : m_n("~") {
         m_n.param<double>(base + "_d", kd, defaultd);
         m_pids[i].setPID(kp, ki, kd);
 
+        double min, max;
+        m_n.param<double>(base + "_min", min, -1.57);
+        m_n.param<double>(base + "_max", max, 1.57);
+        m_min_val[i] = min;
+        m_max_val[i] = max;
+
+        double vcenter;
+        m_n.param<double>(base + "_vcenter", vcenter, 1.65);
+        m_vcenter_val[i] = vcenter;
+
         m_pubs[i] = m_n.advertise<std_msgs::Float64>(base + "/current_pos", 1);
+        m_vpubs[i] = m_n.advertise<std_msgs::Float64>(base + "/voltage", 1);
         m_subs[i] = m_n.subscribe<std_msgs::Float64>(base + "/desired_pos", 1, boost::bind(&SMCNode::pos_cb, this, _1, m_ids[i]));
     }
 
@@ -64,6 +80,7 @@ SMCNode::~SMCNode() {
     m_timer.stop();
 
     for (int i = 0; i < m_controllers.size(); i++) {
+        m_controllers[i]->setMotorSpeed(0.0);
         delete m_controllers[i];
     }
 
@@ -90,13 +107,33 @@ void SMCNode::backgroundTask(const ros::TimerEvent& e) {
     double dt = 1 / DEFAULT_RATE;
 
     for (int i = 0; i < m_ids.size(); i++) {
-        double input = (m_controllers[i]->getAN1() - 1.65) / 3.3 * 5 * 2 * PI;
-        std_msgs::Float64 ang;
-        ang.data = input;
-        m_pubs[i].publish(ang);
+        try {
+            double input = m_controllers[i]->getAN1();
+            double angle = (input - m_vcenter_val[i]) / 3.3 * 5 * 2 * PI;
+            std_msgs::Float64 ang;
+            ang.data = angle;
+            m_pubs[i].publish(ang);
 
-        m_pids[i].update(input, dt);
-        /* m_controllers[i]->setMotorSpeed(m_pids[i].getOutput()); */
-        m_controllers[i]->setMotorSpeed(0.0);
+            std_msgs::Float64 volt;
+            volt.data = m_controllers[i]->getVoltage();
+            m_vpubs[i].publish(volt);
+
+            m_pids[i].update(angle, dt);
+            /* m_controllers[i]->setMotorSpeed(m_pids[i].getOutput()); */
+
+            double output = m_pids[i].getOutput();
+            // if (output > 0 && angle > m_max_val[i]) {
+            //     m_controllers[i]->setMotorSpeed(0.0);
+            // } else if (output < 0 && angle < m_max_val[i]) {
+            //     m_controllers[i]->setMotorSpeed(0.0);
+            // } else {
+                m_controllers[i]->setMotorSpeed(output);
+                /* m_controllers[i]->setMotorSpeed(0.0); */
+            /* } */
+
+        } catch (std::exception& e) {
+            m_controllers[i]->setMotorSpeed(0.0);
+            ROS_WARN("Exception: %s",  e.what());
+        }
     }
 }
