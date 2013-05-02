@@ -1,5 +1,5 @@
-#ifndef PARALLAX_BASE_H_
-#define PARALLAX_BASE_H_
+#ifndef POLOLU_SMC_NODE_H_
+#define POLOLU_SMC_NODE_H_
 
 // libraries
 #include <string>
@@ -12,6 +12,7 @@
 
 // messages
 #include <std_msgs/Float64.h>
+#include <std_msgs/Bool.h>
 
 /**
  * Class to implement a SMCNode node.
@@ -45,6 +46,8 @@ class SMCNode {
 
         int lookup_id(int id);
 
+        void enable_cb(const std_msgs::Bool::ConstPtr& data);
+
         // ROS handle
         ros::NodeHandle m_n;
         ros::Timer m_timer;
@@ -60,6 +63,9 @@ class SMCNode {
         std::vector<ros::Publisher> m_pubs;
         std::vector<ros::Publisher> m_vpubs;
         std::vector<ros::Subscriber> m_subs;
+
+        ros::Subscriber m_enable_subscriber;
+        bool m_enabled;
 };
 
-#endif /* PARALLAX_BASE_H_ */
+#endif /* POLOLU_SMC_NODE_H_ */

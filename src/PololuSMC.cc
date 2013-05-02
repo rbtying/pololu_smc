@@ -288,11 +288,17 @@ double PololuSMC::getRC2() {
 
 double PololuSMC::getAN1() {
     uint16_t val = get_variable(SMCMD::VAR_AN1_RAW_UNLIM);
+    if (val > 0xfff) {
+        return -1;
+    }
     return val * 3.3 / 4096;
 }
 
 double PololuSMC::getAN2() {
     uint16_t val = get_variable(SMCMD::VAR_AN2_RAW_UNLIM);
+    if (val > 0xfff) {
+        return -1;
+    }
     return val * 3.3 / 4096;
 }
 

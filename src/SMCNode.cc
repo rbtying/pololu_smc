@@ -11,7 +11,7 @@
 
 #include <std_msgs/Float64.h>
 
-const double DEFAULT_RATE = 25.0;
+const double DEFAULT_RATE = 50.0;
 const double PI = 3.1415926535;
 
 SMCNode::SMCNode() : m_n("~") {
@@ -31,7 +31,7 @@ SMCNode::SMCNode() : m_n("~") {
     m_n.param<double>("default_i", defaulti, 0);
     m_n.param<double>("default_d", defaultd, 0);
 
-    m_serial = new serial::Serial(portname, 115200);
+    m_serial = new serial::Serial(portname, 1000000);
 
     m_controllers.resize(m_ids.size(), NULL);
     m_pubs.resize(m_ids.size());
@@ -49,7 +49,7 @@ SMCNode::SMCNode() : m_n("~") {
 
         int id = m_ids[i];
 
-        std::string base = "smc_" + boost::lexical_cast<std::string>(id);
+        std::string base = "/smc_" + boost::lexical_cast<std::string>(id);
         ROS_WARN("%s, %d", base.c_str(), m_ids[i]);
         double kp, ki, kd;
         m_n.param<double>(base + "_p", kp, defaultp);
@@ -71,6 +71,9 @@ SMCNode::SMCNode() : m_n("~") {
         m_vpubs[i] = m_n.advertise<std_msgs::Float64>(base + "/voltage", 1);
         m_subs[i] = m_n.subscribe<std_msgs::Float64>(base + "/desired_pos", 1, boost::bind(&SMCNode::pos_cb, this, _1, m_ids[i]));
     }
+
+    m_enabled = 0;
+    m_enable_subscriber = m_n.subscribe<std_msgs::Bool>("/robot_enabled", 1, &SMCNode::enable_cb, this);
 
     m_timer = m_n.createTimer(ros::Rate(DEFAULT_RATE), &SMCNode::backgroundTask, this);
     m_timer.start();
@@ -103,6 +106,10 @@ void SMCNode::pos_cb(const std_msgs::Float64::ConstPtr& data, uint8_t id) {
     m_pids[lookup_id(id)].setSetpoint(data->data);
 }
 
+void SMCNode::enable_cb(const std_msgs::Bool::ConstPtr& data) {
+    m_enabled = data->data;
+}
+
 void SMCNode::backgroundTask(const ros::TimerEvent& e) {
     double dt = 1 / DEFAULT_RATE;
 
@@ -110,6 +117,11 @@ void SMCNode::backgroundTask(const ros::TimerEvent& e) {
         try {
             double input = m_controllers[i]->getAN1();
             double angle = (input - m_vcenter_val[i]) / 3.3 * 5 * 2 * PI;
+
+            if (input < 0) {
+                angle = 0;
+            }
+
             std_msgs::Float64 ang;
             ang.data = angle;
             m_pubs[i].publish(ang);
@@ -122,14 +134,12 @@ void SMCNode::backgroundTask(const ros::TimerEvent& e) {
             /* m_controllers[i]->setMotorSpeed(m_pids[i].getOutput()); */
 
             double output = m_pids[i].getOutput();
-            // if (output > 0 && angle > m_max_val[i]) {
-            //     m_controllers[i]->setMotorSpeed(0.0);
-            // } else if (output < 0 && angle < m_max_val[i]) {
-            //     m_controllers[i]->setMotorSpeed(0.0);
-            // } else {
+
+            if (m_enabled) {
                 m_controllers[i]->setMotorSpeed(output);
-                /* m_controllers[i]->setMotorSpeed(0.0); */
-            /* } */
+            } else {
+                m_controllers[i]->setMotorSpeed(0.0);
+            }
 
         } catch (std::exception& e) {
             m_controllers[i]->setMotorSpeed(0.0);
